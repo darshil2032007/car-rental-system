@@ -38,9 +38,9 @@ service = RentalService()
 
 # ---------------- PAGE 1: DASHBOARD ----------------
 def page_dashboard():
-    """Displays key rental metrics and recent bookings table."""
+    """Displays key rental metrics and visual revenue analytics."""
     st.title("🚗 Car Rental Management Dashboard")
-    st.write("Overview of current fleet, bookings, and financial performance.")
+    st.write("Overview of fleet, bookings, and financial performance.")
 
     try:
         vehicles = database.get_all_vehicles()
@@ -64,23 +64,47 @@ def page_dashboard():
         col4.metric("Total Revenue", f"₹{total_revenue:,.2f}")
 
         st.divider()
-        st.subheader("📋 Recent Bookings")
+        st.subheader("📊 Revenue & Fleet Analytics")
 
-        if bookings:
-            recent_data = bookings[:5]
-            df = pd.DataFrame(recent_data, columns=[
-                "Booking ID", "Customer ID", "Vehicle ID", "Start Date", "Due Date",
-                "Return Date", "Total (₹)", "Late Fee (₹)", "Customer Name",
-                "Brand", "Model", "Category"
-            ])
-            # Reorder columns for user-friendly display
-            display_cols = [
-                "Booking ID", "Customer Name", "Brand", "Model", "Category",
-                "Start Date", "Due Date", "Return Date", "Total (₹)"
-            ]
-            st.dataframe(df[display_cols], use_container_width=True)
+        # Load bookings DataFrame for analytics charts
+        df = reports.load_bookings_dataframe()
+
+        if df.empty:
+            st.info("No bookings recorded yet. Revenue trends and vehicle analytics will appear here once bookings are placed.")
         else:
-            st.info("No bookings recorded yet. Use 'Book Vehicle' to create your first booking.")
+            col_chart1, col_chart2 = st.columns(2)
+
+            with col_chart1:
+                st.write("**Monthly Revenue Trend**")
+                fig_rev = reports.plot_monthly_revenue(df)
+                if fig_rev:
+                    st.pyplot(fig_rev)
+                else:
+                    st.info("No completed rentals with revenue to plot yet.")
+
+            with col_chart2:
+                st.write("**Most Rented Vehicles**")
+                fig_top = reports.plot_top_vehicles(df)
+                if fig_top:
+                    st.pyplot(fig_top)
+                else:
+                    st.info("No vehicle rental frequency data to plot.")
+
+            # Fleet Category Distribution & Summary Table
+            fig_pie = reports.plot_category_pie()
+            if fig_pie:
+                st.divider()
+                col_pie1, col_pie2 = st.columns([1, 1])
+                with col_pie1:
+                    st.write("**Vehicle Fleet by Category**")
+                    st.pyplot(fig_pie)
+                with col_pie2:
+                    st.write("**Monthly Revenue Summary**")
+                    rev_table = reports.monthly_revenue(df)
+                    if not rev_table.empty:
+                        st.dataframe(rev_table, use_container_width=True)
+                    else:
+                        st.info("No revenue summary available.")
 
     except Exception as e:
         st.error(f"Error loading dashboard: {e}")
@@ -468,77 +492,6 @@ def page_overdue_report():
         st.error(f"Error generating overdue report: {e}")
 
 
-# ---------------- PAGE 8: REVENUE REPORTS ----------------
-def page_revenue_reports():
-    """Data analytics page with matplotlib figures and export features."""
-    st.title("📊 Financial & Fleet Analytics")
-
-    try:
-        df = reports.load_bookings_dataframe()
-
-        if df.empty:
-            st.info("No bookings recorded yet. Once rentals are placed, analytics charts will appear here.")
-            return
-
-        # Export and Download Section
-        col_exp1, col_exp2 = st.columns([1, 1])
-        with col_exp1:
-            if st.button("📁 Export Data to CSV and Excel"):
-                paths = reports.export_reports(df)
-                st.success(f"Exported successfully!\n- CSV: {paths['csv']}\n- Excel: {paths['xlsx']}")
-
-        with col_exp2:
-            csv_data = df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Bookings CSV",
-                data=csv_data,
-                file_name="bookings_report.csv",
-                mime="text/csv"
-            )
-
-        st.divider()
-
-        # Visualizations in columns
-        col_chart1, col_chart2 = st.columns(2)
-
-        with col_chart1:
-            st.subheader("Monthly Revenue")
-            fig_rev = reports.plot_monthly_revenue(df)
-            if fig_rev:
-                st.pyplot(fig_rev)
-            else:
-                st.info("No completed rentals with revenue to plot yet.")
-
-        with col_chart2:
-            st.subheader("Top Rented Vehicles")
-            fig_top = reports.plot_top_vehicles(df)
-            if fig_top:
-                st.pyplot(fig_top)
-            else:
-                st.info("No vehicle rental frequency data to plot.")
-
-        st.divider()
-        col_pie1, col_pie2 = st.columns([1, 1])
-        with col_pie1:
-            st.subheader("Fleet Category Breakdown")
-            fig_pie = reports.plot_category_pie()
-            if fig_pie:
-                st.pyplot(fig_pie)
-            else:
-                st.info("No vehicle categories to display.")
-
-        with col_pie2:
-            st.subheader("Monthly Revenue Summary Table")
-            summary_table = reports.monthly_revenue(df)
-            if not summary_table.empty:
-                st.dataframe(summary_table, use_container_width=True)
-            else:
-                st.write("No revenue summary available.")
-
-    except Exception as e:
-        st.error(f"Error loading revenue reports: {e}")
-
-
 # ---------------- NAVIGATION ROUTER ----------------
 def main():
     st.sidebar.title("🚘 Car Rental Menu")
@@ -550,8 +503,7 @@ def main():
         "Return Vehicle",
         "All Bookings",
         "Available Vehicles",
-        "Overdue Report",
-        "Revenue Reports"
+        "Overdue Report"
     ]
     choice = st.sidebar.radio("Select Navigation", menu)
 
@@ -572,8 +524,6 @@ def main():
         page_available_vehicles()
     elif choice == "Overdue Report":
         page_overdue_report()
-    elif choice == "Revenue Reports":
-        page_revenue_reports()
 
 
 if __name__ == "__main__":
