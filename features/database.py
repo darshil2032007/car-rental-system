@@ -322,3 +322,29 @@ def close_booking(booking_id, return_date, total_amount, late_fee):
     finally:
         cursor.close()
         conn.close()
+
+
+def get_bookings_with_details():
+    """
+    Retrieves all bookings joined with customer and vehicle details.
+    Uses parameterized query and try/finally to ensure connection is properly closed.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        query = """
+            SELECT b.booking_id, c.name AS customer_name,
+                   CONCAT(v.brand, ' ', v.model) AS vehicle_name, v.category,
+                   b.start_date, b.due_date, b.return_date,
+                   b.total_amount, b.late_fee
+            FROM bookings b
+            JOIN customers c ON b.customer_id = c.customer_id
+            JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+            ORDER BY b.booking_id DESC
+        """
+        cursor.execute(query)
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+

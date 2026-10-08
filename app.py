@@ -345,7 +345,76 @@ def page_return_vehicle():
         st.error(f"Error loading return page: {e}")
 
 
-# ---------------- PAGE 6: AVAILABLE VEHICLES ----------------
+# ---------------- PAGE: ALL BOOKINGS ----------------
+def page_all_bookings():
+    """Displays all rental bookings with customer/vehicle details, status filtering, and search."""
+    st.title("📋 All Bookings")
+    st.write("Complete history of all vehicle rental records.")
+
+    try:
+        bookings = database.get_all_bookings()
+
+        if not bookings:
+            st.info("No bookings recorded in the system yet.")
+            return
+
+        # Construct DataFrame with readable customer and vehicle names
+        data = []
+        for b in bookings:
+            # b[5] is return_date; Active if empty/None, Returned otherwise
+            is_returned = b[5] is not None and str(b[5]).strip() != "" and str(b[5]).lower() != "none"
+            status = "Returned" if is_returned else "Active"
+            vehicle_name = f"{b[9]} {b[10]} ({b[11]})"
+            data.append({
+                "Booking ID": b[0],
+                "Customer Name": b[8],
+                "Vehicle": vehicle_name,
+                "Start Date": str(b[3]),
+                "Due Date": str(b[4]),
+                "Return Date": str(b[5]) if is_returned else "—",
+                "Total (₹)": float(b[6]),
+                "Late Fee (₹)": float(b[7]),
+                "Status": status
+            })
+
+        df = pd.DataFrame(data)
+
+        # Filters above the table
+        col1, col2 = st.columns(2)
+        with col1:
+            status_filter = st.selectbox("Filter by Status", ["All", "Active", "Returned"])
+        with col2:
+            search_name = st.text_input("Search by Customer Name", placeholder="Type customer name...").strip()
+
+        # Apply status filter
+        filtered_df = df
+        if status_filter != "All":
+            filtered_df = filtered_df[filtered_df["Status"] == status_filter]
+
+        # Apply customer name search filter
+        if search_name:
+            filtered_df = filtered_df[filtered_df["Customer Name"].str.contains(search_name, case=False, na=False)]
+
+        # Display results or info message
+        if filtered_df.empty:
+            st.info("No bookings match the selected criteria.")
+        else:
+            st.dataframe(filtered_df, use_container_width=True)
+
+            # CSV Download Button
+            csv_data = filtered_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Filtered Bookings (CSV)",
+                data=csv_data,
+                file_name="all_bookings.csv",
+                mime="text/csv"
+            )
+
+    except Exception as e:
+        st.error(f"Error loading bookings: {e}")
+
+
+# ---------------- PAGE: AVAILABLE VEHICLES ----------------
 def page_available_vehicles():
     """Lists available vehicles with an optional maximum daily rate filter."""
     st.title("🚗 Available Vehicles")
@@ -539,6 +608,7 @@ def main():
         "Register Customer",
         "Book Vehicle",
         "Return Vehicle",
+        "All Bookings",
         "Available Vehicles",
         "Overdue Report",
         "Revenue Reports",
@@ -557,6 +627,8 @@ def main():
         page_book_vehicle()
     elif choice == "Return Vehicle":
         page_return_vehicle()
+    elif choice == "All Bookings":
+        page_all_bookings()
     elif choice == "Available Vehicles":
         page_available_vehicles()
     elif choice == "Overdue Report":
