@@ -1,10 +1,8 @@
-# File Handling and Serialization module
-# Demonstrates: 'with' statement, os path operations, file.seek(), file.tell(), and pickle serialization
+# File Handling module
+# Demonstrates: 'with' statement and os path operations for rental receipts
 import os
-import pickle
 import logging
 from datetime import datetime
-from features import database
 
 # Configure logger
 logger = logging.getLogger("FileHandler")
@@ -12,11 +10,9 @@ logger = logging.getLogger("FileHandler")
 # Resolve directories relative to the car_rental root folder
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RECEIPT_DIR = os.path.join(BASE_DIR, "receipts")
-BACKUP_DIR = os.path.join(BASE_DIR, "backup")
 
 # Ensure required folders exist
 os.makedirs(RECEIPT_DIR, exist_ok=True)
-os.makedirs(BACKUP_DIR, exist_ok=True)
 
 
 def generate_receipt(bill):
@@ -89,88 +85,3 @@ def read_receipt(booking_id):
     except Exception as e:
         logger.error(f"Error reading receipt #{booking_id}: {str(e)}")
         raise
-
-
-def backup_data():
-    """
-    Fetches all vehicles, customers, and bookings from database,
-    packs them into a dictionary, and serializes to backup/backup.pkl using pickle.dump.
-    Returns the backup file path.
-    """
-    try:
-        os.makedirs(BACKUP_DIR, exist_ok=True)
-        backup_file = os.path.join(BACKUP_DIR, "backup.pkl")
-
-        # Gather plain data from database
-        data = {
-            "backup_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "vehicles": database.get_all_vehicles(),
-            "customers": database.get_all_customers(),
-            "bookings": database.get_all_bookings()
-        }
-
-        # Write binary mode using 'with' and pickle.dump
-        with open(backup_file, "wb") as f:
-            pickle.dump(data, f)
-
-        logger.info(f"Database successfully backed up to {backup_file}")
-        return backup_file
-
-    except Exception as e:
-        logger.error(f"Error creating pickle backup: {str(e)}")
-        raise
-
-
-def restore_preview():
-    """
-    Deserializes and returns the backup data dictionary using pickle.load (Read-only preview).
-    Does NOT modify live database tables.
-    """
-    backup_file = os.path.join(BACKUP_DIR, "backup.pkl")
-
-    if not os.path.exists(backup_file):
-        raise FileNotFoundError(f"Backup file not found at {backup_file}")
-
-    try:
-        # Read binary mode using 'with' and pickle.load
-        with open(backup_file, "rb") as f:
-            data = pickle.load(f)
-        return data
-    except Exception as e:
-        logger.error(f"Error reading pickle backup: {str(e)}")
-        raise
-
-
-def get_backup_info():
-    """
-    Returns metadata about the backup file.
-    Demonstrates syllabus topics: os.path.exists(), os.path.getsize(), file.seek(), and file.tell().
-    """
-    backup_file = os.path.join(BACKUP_DIR, "backup.pkl")
-
-    if not os.path.exists(backup_file):
-        return None
-
-    try:
-        os_size = os.path.getsize(backup_file)
-
-        # Demonstrate syllabus topics: file.seek() and file.tell()
-        with open(backup_file, "rb") as f:
-            # Move file cursor to the end of file
-            f.seek(0, os.SEEK_END)
-            # tell() returns current cursor position (which equals file size in bytes)
-            size_from_tell = f.tell()
-            # Rewind cursor back to the beginning
-            f.seek(0, os.SEEK_SET)
-
-        mod_time = datetime.fromtimestamp(os.path.getmtime(backup_file)).strftime("%Y-%m-%d %H:%M:%S")
-
-        return {
-            "path": backup_file,
-            "size_bytes": size_from_tell,
-            "size_kb": round(size_from_tell / 1024, 2),
-            "last_modified": mod_time
-        }
-    except Exception as e:
-        logger.error(f"Error getting backup info: {str(e)}")
-        return None

@@ -1,5 +1,4 @@
-# Car Rental Management System - Streamlit Web UI
-# College Mini Project (GTU Syllabus)
+# Car Rental Management System
 # Demonstrates: Streamlit UI, Exception Handling, OOP, DB Integration, Pandas, and Matplotlib
 import os
 from datetime import date, timedelta
@@ -540,65 +539,6 @@ def page_revenue_reports():
         st.error(f"Error loading revenue reports: {e}")
 
 
-# ---------------- PAGE 9: BACKUP ----------------
-def page_backup():
-    """Data backup and restore preview using pickle and file operations."""
-    st.title("💾 Data Backup & Restore Preview")
-    st.write("Demonstrates Python binary file handling, pickle serialization, seek(), and tell().")
-
-    col_act1, col_act2 = st.columns(2)
-
-    with col_act1:
-        st.subheader("Create System Backup")
-        if st.button("Create Pickle Backup (.pkl)", type="primary"):
-            try:
-                backup_file = file_handler.backup_data()
-                st.success(f"Backup created successfully at: {backup_file}")
-            except Exception as e:
-                st.error(f"Error creating backup: {e}")
-
-    # Display Backup Info
-    info = file_handler.get_backup_info()
-    if info:
-        st.info(
-            f"📦 **Backup File Metadata** (demonstrating seek() and tell()):\n\n"
-            f"- **Path**: `{info['path']}`\n"
-            f"- **Size**: {info['size_bytes']} bytes ({info['size_kb']} KB)\n"
-            f"- **Last Modified**: {info['last_modified']}"
-        )
-    else:
-        st.warning("No backup file found. Click 'Create Pickle Backup' above to generate one.")
-
-    st.divider()
-
-    with col_act2:
-        st.subheader("Preview Backup Data")
-        if st.button("Preview Backup Contents"):
-            try:
-                data = file_handler.restore_preview()
-                st.success(f"Backup file successfully deserialized! (Saved on {data.get('backup_time')})")
-
-                v_count = len(data.get("vehicles", []))
-                c_count = len(data.get("customers", []))
-                b_count = len(data.get("bookings", []))
-
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Vehicles in Backup", v_count)
-                m2.metric("Customers in Backup", c_count)
-                m3.metric("Bookings in Backup", b_count)
-
-                if data.get("vehicles"):
-                    st.write("**Backed-up Vehicles Preview:**")
-                    st.dataframe(
-                        pd.DataFrame(data["vehicles"][:5], columns=["ID", "Brand", "Model", "Category", "Rate", "Status"]),
-                        use_container_width=True
-                    )
-            except FileNotFoundError:
-                st.error("No backup file exists to preview. Please create a backup first.")
-            except Exception as e:
-                st.error(f"Error previewing backup: {e}")
-
-
 # ---------------- NAVIGATION ROUTER ----------------
 def main():
     st.sidebar.title("🚘 Car Rental Menu")
@@ -611,8 +551,7 @@ def main():
         "All Bookings",
         "Available Vehicles",
         "Overdue Report",
-        "Revenue Reports",
-        "Backup"
+        "Revenue Reports"
     ]
     choice = st.sidebar.radio("Select Navigation", menu)
 
@@ -635,8 +574,6 @@ def main():
         page_overdue_report()
     elif choice == "Revenue Reports":
         page_revenue_reports()
-    elif choice == "Backup":
-        page_backup()
 
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 rental.log
 receipts/*.txt
-backup/*.pkl
 reports/
 .env
 .streamlit/secrets.toml
